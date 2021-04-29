@@ -1,0 +1,12 @@
+{
+  "name": "curation-migration",
+  "version": "1.0.0",
+  "main": "main.ts",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^15.0.0",
+    "decimal.js": "^10.2.1",
+    "ethers": "^5.1.4",
+    "numeral": "^2.0.6"
+  }
+}

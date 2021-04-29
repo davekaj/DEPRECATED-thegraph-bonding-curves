@@ -1,0 +1,29 @@
+{
+    "data": {
+        "graphNetwork": {
+            "curationTaxPercentage": 25000,
+            "gns": "0xadca0dd4729c8ba3acf3e99f3a9f471ef37b6825",
+            "minimumCurationDeposit": "1000000000000000000"
+        },
+        "subgraph": {
+            "currentVersion": {
+                "subgraphDeployment": {
+                    "curatorSignals": [
+                        {
+                            "curator": {
+                                "id": "0xadca0dd4729c8ba3acf3e99f3a9f471ef37b6825"
+                            },
+                            "signal": "360104151600616787382"
+                        }
+                    ],
+                    "reserveRatio": 500000,
+                    "signalAmount": "360104151600616787382",
+                    "signalledTokens": "132999999999999997902848"
+                }
+            },
+            "displayName": "Omen",
+            "id": "0x0503024fcc5e1bd834530e69d592dbb6e8c03968-0",
+            "nameSignalAmount": "360104151600616787382"
+        }
+    }
+}
