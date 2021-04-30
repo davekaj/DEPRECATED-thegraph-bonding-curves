@@ -15,3 +15,10 @@ network.
   to the example result.
 - Please just copy paste this code and fit it into the graph front end as needed. No need to make this a package or anything
 - Only use the 4 exported functions `tokensToNSignal(), nSignalToTokens(), tokensToSignal(), signalToTokens()`. This is all that is needed in the front end
+
+
+
+TODO
+- getIndexerCapacity (staking)
+- pending rewards (rewards manager)
+- add tests by querying the subgraph, and, running real tests. should work on dynamic queries
