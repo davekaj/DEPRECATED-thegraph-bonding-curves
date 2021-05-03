@@ -42,7 +42,7 @@ export const exampleQueryResult = {
         subgraphDeployment: {
           reserveRatio: 500000,
           signalAmount: '360104151600616787382',
-          signalledTokens: '132999999999999997902848',
+          signalledTokens: '129674999999999997955277',
         },
       },
       displayName: 'Omen',
