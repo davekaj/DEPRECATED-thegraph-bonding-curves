@@ -22,3 +22,7 @@ TODO
 - getIndexerCapacity (staking)
 - pending rewards (rewards manager)
 - add tests by querying the subgraph, and, running real tests. should work on dynamic queries
+
+## some thoughts on optimization
+- the decimal.js library seemed pretty good. but i removed it
+- BN js seems slow for us , we have noticed
