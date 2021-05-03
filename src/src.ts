@@ -4,7 +4,7 @@ import { bigNumberify } from './helpers'
 
 const ZERO = bigNumberify(0)
 const ONE = bigNumberify(1)
-const MAX_WEIGHT = 1000000 // no BigNumber
+const MAX_WEIGHT = bigNumberify(1000000) // no BigNumber
 const PPM = bigNumberify(1000000)
 const BN_E18 = bigNumberify('1000000000000000000')
 
@@ -25,7 +25,7 @@ const SIGNAL_PER_MINIMUM_DEPOSIT = BN_E18
  */
 export function tokensToNSignal(
   _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
+  _reserveRatio: BigNumber,
   _totalVSignal: BigNumber,
   _tokensIn: BigNumber,
   _curationTax: BigNumber,
@@ -58,7 +58,7 @@ export function tokensToNSignal(
  */
 export function tokensToSignal(
   _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
+  _reserveRatio: BigNumber,
   _totalVSignal: BigNumber,
   _tokensIn: BigNumber,
   _curationTax: BigNumber,
@@ -132,7 +132,7 @@ function vSignalToNSignal(
  */
 export function nSignalToTokens(
   _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
+  _reserveRatio: BigNumber,
   _totalVSignal: BigNumber,
   _nSignalIn: BigNumber,
   _totalNSignal: BigNumber,
@@ -176,7 +176,7 @@ function nSignalToVSignal(
  */
 export function signalToTokens(
   _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
+  _reserveRatio: BigNumber,
   _totalVSignal: BigNumber,
   _vSignalIn: BigNumber,
 ): BigNumber {
@@ -223,7 +223,7 @@ export function signalToTokens(
 function purchaseTargetAmount(
   supply: BigNumber,
   reserveBalance: BigNumber,
-  reserveWeight: number,
+  reserveWeight: BigNumber,
   depositAmount: BigNumber,
 ) {
   // special case for 0 deposit amount
@@ -239,13 +239,17 @@ function purchaseTargetAmount(
   // CRAP>>> BN js is NOT BUILT FOR THIS. prob going to revert to decimal.js for these funcs
   // and then just return ethers js functions. YEP!
 
-  // return supply * ((1 + amount / reserveBalance) ^ (reserveWeight / MAX_WEIGHT) - 1)
-  return supply.mul()
-  // return supply.mul(
-  //   ONE.add(depositAmount.div(reserveBalance))
-  //     .pow(reserveWeight / MAX_WEIGHT)
-  //     .sub(ONE),
-  // )
+  // If x^0.5 we can simplfy BigNumber to use sqrt
+  // TODO - make if more robust, in case we ever change the default reserve ratio
+  if (reserveBalance.mul(BigNumber.from(2)) == MAX_WEIGHT){
+    return supply.mul(ONE.add(depositAmount.div))
+  }
+    // return supply * ((1 + amount / reserveBalance) ^ (reserveWeight / MAX_WEIGHT) - 1)
+    return supply.mul(
+      ONE.add(depositAmount.div(reserveBalance))
+        .pow(reserveWeight / MAX_WEIGHT)
+        .sub(ONE),
+    )
 }
 
 /**
@@ -266,7 +270,7 @@ function purchaseTargetAmount(
 function saleTargetAmount(
   supply: BigNumber,
   reserveBalance: BigNumber,
-  reserveRatio: number,
+  reserveRatio: BigNumber,
   sellAmount: BigNumber,
 ) {
   // special case for 0 sell amount
@@ -280,5 +284,7 @@ function saleTargetAmount(
     return reserveBalance.mul(sellAmount.mul(BN_E18)).div(supply).div(BN_E18)
 
   // return reserveBalance * (1 - (1 - amount / supply) ^ (MAX_WEIGHT / reserveWeight))
-  return reserveBalance.mul(ONE.sub(ONE.sub(sellAmount.div(supply)).pow(MAX_WEIGHT / reserveRatio)))
+  return reserveBalance.mul(
+    ONE.sub(ONE.sub(sellAmount.div(supply)).pow(MAX_WEIGHT.div(reserveRatio))),
+  )
 }
