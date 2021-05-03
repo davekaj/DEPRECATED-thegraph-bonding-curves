@@ -1,41 +1,41 @@
-// import { bigNumberify } from "helpers";
-// import Decimal from 'decimal.js'
+// import { Decimalify } from "helpers";
+import Decimal from 'decimal.js'
 import { BigNumber, ethers, utils } from 'ethers'
 
 import { nSignalToTokens, tokensToNSignal, signalToTokens, tokensToSignal } from './src/src'
-import exampleQuery from './example-query.json'
+import { exampleQueryResult } from './example-query'
 
-const ONE_HUNDRED_THOUSAND_E18 = BigNumber.from('100000000000000000000000')
-const ONE_HUNDRED_E18 = BigNumber.from('100000000000000000000')
+const ONE_HUNDRED_THOUSAND_E18 = new Decimal('100000000000000000000000')
+const ONE_HUNDRED_E18 = new Decimal('100000000000000000000')
 
-// Decimal.set({ precision: 30, rounding: Decimal.ROUND_DOWN })
+Decimal.set({ toExpPos: 28, rounding: Decimal.ROUND_DOWN })
 
 // TODO - grab a delegators address, so we could do BURN too, would need to read name signal
 
 // EXAMPLE QUERY - GLOBAL VALUES
-const CURATION_TAX = BigNumber.from(exampleQuery.data.graphNetwork.curationTaxPercentage)
-const MINIMUM_CURATION_DEPOSIT = BigNumber.from(
-  exampleQuery.data.graphNetwork.minimumCurationDeposit,
+const CURATION_TAX = new Decimal(exampleQueryResult.data.graphNetwork.curationTaxPercentage)
+const MINIMUM_CURATION_DEPOSIT = new Decimal(
+  exampleQueryResult.data.graphNetwork.minimumCurationDeposit,
 )
 
 ///// EXAMPLE QUERY - SUBGRAPH SPECIFIC VALUES
-const SUBGRAPH_DEPLOYMENT = exampleQuery.data.subgraph.currentVersion.subgraphDeployment
-const tokensCuratedOnDeployment = BigNumber.from(SUBGRAPH_DEPLOYMENT.signalledTokens)
-const totalVSignal = BigNumber.from(SUBGRAPH_DEPLOYMENT.signalAmount)
-const reserveRatio = SUBGRAPH_DEPLOYMENT.reserveRatio // no BigNumber
-const totalNSignal = BigNumber.from(exampleQuery.data.subgraph.nameSignalAmount)
-const vSignalGNS = BigNumber.from(exampleQuery.data.signal.signal)
-const userNSignal = BigNumber.from(exampleQuery.data.nameSignal.nameSignal)
+const SUBGRAPH_DEPLOYMENT = exampleQueryResult.data.subgraph.currentVersion.subgraphDeployment
+const tokensCuratedOnDeployment = new Decimal(SUBGRAPH_DEPLOYMENT.signalledTokens)
+const totalVSignal = new Decimal(SUBGRAPH_DEPLOYMENT.signalAmount)
+const reserveRatio = new Decimal(SUBGRAPH_DEPLOYMENT.reserveRatio)
+const totalNSignal = new Decimal(exampleQueryResult.data.subgraph.nameSignalAmount)
+const vSignalGNS = new Decimal(exampleQueryResult.data.signal.signal)
+const userNSignal = new Decimal(exampleQueryResult.data.nameSignal.nameSignal)
 
-function prettyPrintBNs(bns: Array<BigNumber>): void {
-  bns.forEach((element) => {
-    console.log(element.toString())
-  })
-}
+// function prettyPrintBNs(bns: Array<Decimal>): void {
+//   bns.forEach((element) => {
+//     console.log(element.toString())
+//   })
+// }
 
 function main() {
   console.log('tokensToNSignal:')
-  prettyPrintBNs(
+  console.log(
     tokensToNSignal(
       tokensCuratedOnDeployment,
       reserveRatio,
@@ -48,7 +48,7 @@ function main() {
     ),
   )
   console.log('tokensToSignal:')
-  prettyPrintBNs(
+  console.log(
     tokensToSignal(
       tokensCuratedOnDeployment,
       reserveRatio,
@@ -59,7 +59,7 @@ function main() {
     ),
   )
   console.log('nSignalToTokens:')
-  prettyPrintBNs(
+  console.log(
     nSignalToTokens(
       tokensCuratedOnDeployment,
       reserveRatio,
@@ -70,6 +70,14 @@ function main() {
     ),
   )
   console.log('signalToTokens:')
+  console.log(
+    signalToTokens(
+      tokensCuratedOnDeployment,
+      reserveRatio,
+      totalVSignal,
+      vSignalGNS,
+    ),
+  )
 }
 
 main()

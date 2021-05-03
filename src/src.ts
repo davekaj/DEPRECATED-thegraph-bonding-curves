@@ -1,15 +1,18 @@
-// import Decimal from 'decimal.js'
+import Decimal from 'decimal.js'
 import { BigNumber, ethers, utils } from 'ethers'
 import { bigNumberify } from './helpers'
 
-const ZERO = bigNumberify(0)
-const ONE = bigNumberify(1)
-const MAX_WEIGHT = 1000000 // no BigNumber
-const PPM = bigNumberify(1000000)
-const BN_E18 = bigNumberify('1000000000000000000')
+Decimal.set({ toExpPos: 28, rounding: Decimal.ROUND_DOWN })
+
+const ZERO_D = new Decimal(0)
+const ONE = new Decimal(1)
+const MAX_WEIGHT = new Decimal(1000000)
+const PPM = new Decimal(1000000)
+const DECIMAL_E18 = new Decimal('1000000000000000000')
+const ZERO_BN = BigNumber.from(0)
 
 // Global contract value, non-upgradeable
-const SIGNAL_PER_MINIMUM_DEPOSIT = BN_E18
+const SIGNAL_PER_MINIMUM_DEPOSIT = DECIMAL_E18
 
 /**
  * @dev Calculate nSignal to be returned for an amount of GRT.
@@ -24,15 +27,15 @@ const SIGNAL_PER_MINIMUM_DEPOSIT = BN_E18
  * @return Amount of nSignal that can be bought
  */
 export function tokensToNSignal(
-  _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
-  _totalVSignal: BigNumber,
-  _tokensIn: BigNumber,
-  _curationTax: BigNumber,
-  _minimumCurationDeposit: BigNumber,
-  _totalNSignal: BigNumber,
-  _vSignalGNS: BigNumber,
-) {
+  _tokensCuratedOnDeployment: Decimal,
+  _reserveRatio: Decimal,
+  _totalVSignal: Decimal,
+  _tokensIn: Decimal,
+  _curationTax: Decimal,
+  _minimumCurationDeposit: Decimal,
+  _totalNSignal: Decimal,
+  _vSignalGNS: Decimal,
+): [BigNumber, BigNumber, BigNumber] {
   const [vSignal, curationTax] = tokensToSignal(
     _tokensCuratedOnDeployment,
     _reserveRatio,
@@ -43,6 +46,7 @@ export function tokensToNSignal(
   )
 
   const nSignal = vSignalToNSignal(_totalNSignal, _vSignalGNS, vSignal)
+  console.log('N SIGNAL: ', BigNumber.from(nSignal.toString()).toString())
   return [vSignal, nSignal, curationTax]
 }
 
@@ -57,23 +61,23 @@ export function tokensToNSignal(
  * @return Amount of vSignal that can be bought
  */
 export function tokensToSignal(
-  _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
-  _totalVSignal: BigNumber,
-  _tokensIn: BigNumber,
-  _curationTax: BigNumber,
-  _minimumCurationDeposit: BigNumber,
+  _tokensCuratedOnDeployment: Decimal,
+  _reserveRatio: Decimal,
+  _totalVSignal: Decimal,
+  _tokensIn: Decimal,
+  _curationTax: Decimal,
+  _minimumCurationDeposit: Decimal,
 ): [BigNumber, BigNumber] {
-  const tax: BigNumber = _tokensIn.mul(_curationTax).div(PPM)
-  let signalOut: BigNumber
+  const tax: Decimal = _tokensIn.mul(_curationTax).div(PPM)
+  let signalOut: Decimal
 
-  const tokensMinusTax: BigNumber = _tokensIn.sub(tax)
-  if (_tokensCuratedOnDeployment == ZERO) {
+  const tokensMinusTax: Decimal = _tokensIn.sub(tax)
+  if (_tokensCuratedOnDeployment == ZERO_D) {
     if (_tokensIn.lt(_minimumCurationDeposit)) {
       console.warn(
         'ERROR: Curation deposit is below minimum required. This contract call would fail on the EVM. We return [0,0] here',
       )
-      return [ZERO, ZERO]
+      return [ZERO_BN, ZERO_BN]
     }
 
     signalOut = purchaseTargetAmount(
@@ -89,8 +93,11 @@ export function tokensToSignal(
       _reserveRatio,
       tokensMinusTax,
     )
-    console.log('YOYO')
   }
+
+  console.log('TAX: ', BigNumber.from(tax.toString()).toString())
+  console.log('signalOut: ', BigNumber.from(signalOut.toString()).toString())
+
   return [signalOut, tax]
 }
 
@@ -102,12 +109,12 @@ export function tokensToSignal(
  * @return Amount of nSignal that can be bought
  */
 function vSignalToNSignal(
-  _totalNSignal: BigNumber,
-  _vSignalGNS: BigNumber,
-  _vSignalIn: BigNumber,
+  _totalNSignal: Decimal,
+  _vSignalGNS: Decimal,
+  _vSignalIn: Decimal,
 ): BigNumber {
   // always can initalize at 1 to 1, and avoid division by zero
-  if (_vSignalGNS == ZERO) {
+  if (_vSignalGNS == ZERO_D) {
     return _vSignalIn
   }
   // Here we simplify, and do NOT use bancor formula, because we know that the
@@ -131,13 +138,13 @@ function vSignalToNSignal(
  * @return Amount of nSignal that can be bought
  */
 export function nSignalToTokens(
-  _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
-  _totalVSignal: BigNumber,
-  _nSignalIn: BigNumber,
-  _totalNSignal: BigNumber,
-  _vSignalGNS: BigNumber,
-) {
+  _tokensCuratedOnDeployment: Decimal,
+  _reserveRatio: Decimal,
+  _totalVSignal: Decimal,
+  _nSignalIn: Decimal,
+  _totalNSignal: Decimal,
+  _vSignalGNS: Decimal,
+): [BigNumber, BigNumber] {
   const vSignalOut = nSignalToVSignal(_totalNSignal, _vSignalGNS, _nSignalIn)
   const tokensOut = signalToTokens(
     _tokensCuratedOnDeployment,
@@ -145,7 +152,8 @@ export function nSignalToTokens(
     _totalVSignal,
     vSignalOut,
   )
-  return [vSignalOut, tokensOut]
+  console.log('VSIG OUT: ', BigNumber.from(vSignalOut.toString()).toString())
+  return [decimalToBN( vSignalOut), tokensOut]
 }
 
 /**
@@ -156,14 +164,14 @@ export function nSignalToTokens(
  * @return Amount of vSignal to be received
  */
 function nSignalToVSignal(
-  _totalNSignal: BigNumber,
-  _vSignalGNS: BigNumber,
-  _nSignalIn: BigNumber,
-): BigNumber {
+  _totalNSignal: Decimal,
+  _vSignalGNS: Decimal,
+  _nSignalIn: Decimal,
+): Decimal {
   // Here we simplify, and do NOT use bancor formula, because we know that the
   // nameReserveRatio should always be 1000000 (i.e. 1 in PPM)
   // The formula simplifies to _vSignalGNS * _nSignalIn / _totalNSignal
-  return _vSignalGNS.mul(_nSignalIn).div(_totalNSignal)
+  return (_vSignalGNS.mul(_nSignalIn).div(_totalNSignal)
 }
 
 /**
@@ -175,22 +183,22 @@ function nSignalToVSignal(
  * @return Amount of vSignal that can be bought
  */
 export function signalToTokens(
-  _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
-  _totalVSignal: BigNumber,
-  _vSignalIn: BigNumber,
+  _tokensCuratedOnDeployment: Decimal,
+  _reserveRatio: Decimal,
+  _totalVSignal: Decimal,
+  _vSignalIn: Decimal,
 ): BigNumber {
-  if (_tokensCuratedOnDeployment.lte(ZERO)) {
+  if (_tokensCuratedOnDeployment.lte(ZERO_D)) {
     console.warn(
       'ERROR: Subgraph deployment must be curated to perform calculations. This would fail on the EVM. We return 0',
     )
-    return ZERO
+    return ZERO_BN
   }
   if (_vSignalIn > _totalVSignal) {
     console.warn(
       'ERROR: Signal must be above or equal to signal issued in the curation pool. This would fail on the EVM. We return 0',
     )
-    return ZERO
+    return ZERO_BN
   }
 
   const tokensOut = saleTargetAmount(
@@ -199,12 +207,9 @@ export function signalToTokens(
     _reserveRatio,
     _vSignalIn,
   )
+  console.log('TOKENS OUT: ', BigNumber.from(tokensOut.toString()).toString())
   return tokensOut
 }
-
-///////////////////////////////////// BANCOR BELOW
-///////////////////////////////////// BANCOR BELOW
-///////////////////////////////////// BANCOR BELOW
 
 /**
  * @dev given a vSignal supply, GRT reserve balance, ratio and a deposit amount (in GRT),
@@ -221,31 +226,21 @@ export function signalToTokens(
  * @return purchase return amount in vSignal
  */
 function purchaseTargetAmount(
-  supply: BigNumber,
-  reserveBalance: BigNumber,
-  reserveWeight: number,
-  depositAmount: BigNumber,
-) {
+  supply: Decimal,
+  reserveBalance: Decimal,
+  reserveWeight: Decimal,
+  depositAmount: Decimal,
+): BigNumber {
   // special case for 0 deposit amount
-  if (depositAmount.eq(ZERO)) return ZERO
-
-  const depositAmountSmall = depositAmount.div(bigNumberify(1000000000)).toNumber()
-  const reserveBalanceSmall = reserveBalance.div(bigNumberify(1000000000)).toNumber()
+  if (depositAmount.equals(ZERO_D)) return ZERO_BN
 
   // special case if the weight = 100%
-  // if (reserveWeight == MAX_WEIGHT) return supply.mul(depositAmount).div(reserveBalance)
-  if (reserveWeight == MAX_WEIGHT) return supply.mul(depositAmount).div(reserveBalance) // TODO FIX
-
-  // CRAP>>> BN js is NOT BUILT FOR THIS. prob going to revert to decimal.js for these funcs
-  // and then just return ethers js functions. YEP!
+  if (reserveWeight.equals(MAX_WEIGHT)) return decimalToBN(supply.mul(depositAmount).div(reserveBalance))
 
   // return supply * ((1 + amount / reserveBalance) ^ (reserveWeight / MAX_WEIGHT) - 1)
-  return supply.mul()
-  // return supply.mul(
-  //   ONE.add(depositAmount.div(reserveBalance))
-  //     .pow(reserveWeight / MAX_WEIGHT)
-  //     .sub(ONE),
-  // )
+  return decimalToBN(supply.mul(
+    ONE.add(depositAmount.div(reserveBalance)).pow(reserveWeight.div(MAX_WEIGHT)).sub(ONE),
+  ))
 }
 
 /**
@@ -264,21 +259,27 @@ function purchaseTargetAmount(
  */
 
 function saleTargetAmount(
-  supply: BigNumber,
-  reserveBalance: BigNumber,
-  reserveRatio: number,
-  sellAmount: BigNumber,
-) {
+  supply: Decimal,
+  reserveBalance: Decimal,
+  reserveRatio: Decimal,
+  sellAmount: Decimal,
+): BigNumber {
   // special case for 0 sell amount
-  if (sellAmount.eq(ZERO)) return ZERO
+  if (sellAmount.equals(ZERO_D)) return ZERO_BN
 
   // special case for selling the entire supply
-  if (sellAmount.eq(supply)) return reserveBalance
+  if (sellAmount.equals(supply)) return decimalToBN(reserveBalance)
 
   // special case if the weight = 100%
-  if (reserveRatio == MAX_WEIGHT)
-    return reserveBalance.mul(sellAmount.mul(BN_E18)).div(supply).div(BN_E18)
+  if (reserveRatio.equals(MAX_WEIGHT))
+    return decimalToBN(reserveBalance.mul(sellAmount).div(supply))
 
   // return reserveBalance * (1 - (1 - amount / supply) ^ (MAX_WEIGHT / reserveWeight))
-  return reserveBalance.mul(ONE.sub(ONE.sub(sellAmount.div(supply)).pow(MAX_WEIGHT / reserveRatio)))
+  return decimalToBN(
+    reserveBalance.mul(ONE.sub(ONE.sub(sellAmount.div(supply)).pow(MAX_WEIGHT.div(reserveRatio)))),
+  )
+}
+
+function decimalToBN(decimal: Decimal): BigNumber {
+  return BigNumber.from(decimal.toString())
 }
