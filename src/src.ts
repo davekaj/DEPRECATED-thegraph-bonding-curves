@@ -1,12 +1,12 @@
-// import Decimal from 'decimal.js'
-import { BigNumber, ethers, utils } from 'ethers'
-import { bigNumberify } from './helpers'
+import Decimal from 'decimal.js'
+import { BigNumber } from 'ethers'
 
-const ZERO = bigNumberify(0)
-const ONE = bigNumberify(1)
-const MAX_WEIGHT = 1000000 // no BigNumber
-const PPM = bigNumberify(1000000)
-const BN_E18 = bigNumberify('1000000000000000000')
+const ZERO = BigNumber.from(0)
+const ONE_D = new Decimal(1)
+const MAX_WEIGHT = BigNumber.from(1000000) // no BigNumber
+const PPM = BigNumber.from(1000000)
+const BN_E18 = BigNumber.from('1000000000000000000')
+const BN_2 = BigNumber.from(2)
 
 // Global contract value, non-upgradeable
 const SIGNAL_PER_MINIMUM_DEPOSIT = BN_E18
@@ -25,14 +25,14 @@ const SIGNAL_PER_MINIMUM_DEPOSIT = BN_E18
  */
 export function tokensToNSignal(
   _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
+  _reserveRatio: BigNumber,
   _totalVSignal: BigNumber,
   _tokensIn: BigNumber,
   _curationTax: BigNumber,
   _minimumCurationDeposit: BigNumber,
   _totalNSignal: BigNumber,
   _vSignalGNS: BigNumber,
-) {
+): [BigNumber, BigNumber, BigNumber] {
   const [vSignal, curationTax] = tokensToSignal(
     _tokensCuratedOnDeployment,
     _reserveRatio,
@@ -58,7 +58,7 @@ export function tokensToNSignal(
  */
 export function tokensToSignal(
   _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
+  _reserveRatio: BigNumber,
   _totalVSignal: BigNumber,
   _tokensIn: BigNumber,
   _curationTax: BigNumber,
@@ -89,7 +89,6 @@ export function tokensToSignal(
       _reserveRatio,
       tokensMinusTax,
     )
-    console.log('YOYO')
   }
   return [signalOut, tax]
 }
@@ -132,12 +131,12 @@ function vSignalToNSignal(
  */
 export function nSignalToTokens(
   _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
+  _reserveRatio: BigNumber,
   _totalVSignal: BigNumber,
   _nSignalIn: BigNumber,
   _totalNSignal: BigNumber,
   _vSignalGNS: BigNumber,
-) {
+): [BigNumber, BigNumber] {
   const vSignalOut = nSignalToVSignal(_totalNSignal, _vSignalGNS, _nSignalIn)
   const tokensOut = signalToTokens(
     _tokensCuratedOnDeployment,
@@ -176,7 +175,7 @@ function nSignalToVSignal(
  */
 export function signalToTokens(
   _tokensCuratedOnDeployment: BigNumber,
-  _reserveRatio: number,
+  _reserveRatio: BigNumber,
   _totalVSignal: BigNumber,
   _vSignalIn: BigNumber,
 ): BigNumber {
@@ -223,29 +222,26 @@ export function signalToTokens(
 function purchaseTargetAmount(
   supply: BigNumber,
   reserveBalance: BigNumber,
-  reserveWeight: number,
+  reserveRatio: BigNumber,
   depositAmount: BigNumber,
-) {
+): BigNumber {
   // special case for 0 deposit amount
   if (depositAmount.eq(ZERO)) return ZERO
 
-  const depositAmountSmall = depositAmount.div(bigNumberify(1000000000)).toNumber()
-  const reserveBalanceSmall = reserveBalance.div(bigNumberify(1000000000)).toNumber()
-
   // special case if the weight = 100%
-  // if (reserveWeight == MAX_WEIGHT) return supply.mul(depositAmount).div(reserveBalance)
-  if (reserveWeight == MAX_WEIGHT) return supply.mul(depositAmount).div(reserveBalance) // TODO FIX
+  if (reserveRatio == MAX_WEIGHT) return supply.mul(depositAmount).div(reserveBalance)
 
-  // CRAP>>> BN js is NOT BUILT FOR THIS. prob going to revert to decimal.js for these funcs
-  // and then just return ethers js functions. YEP!
+  // return supply * ((1 + depositAmount / reserveBalance) ^ (reserveRatio / MAX_WEIGHT) - 1)
+  const supplyD = new Decimal(supply.toString())
+  const amountD = new Decimal(depositAmount.toString())
+  const reserveBalanceD = new Decimal(reserveBalance.toString())
+  let exp: Decimal
+  MAX_WEIGHT.eq(reserveRatio.mul(BN_2)) // make it a bit more efficient for current network stats. But can handle a change in default reserve ratio
+    ? (exp = new Decimal(0.5))
+    : (exp = new Decimal(reserveRatio.toString()).div(new Decimal(MAX_WEIGHT.toString())))
+  const purchaseAmount = supplyD.mul(ONE_D.add(amountD.div(reserveBalanceD)).pow(exp).sub(ONE_D))
 
-  // return supply * ((1 + amount / reserveBalance) ^ (reserveWeight / MAX_WEIGHT) - 1)
-  return supply.mul()
-  // return supply.mul(
-  //   ONE.add(depositAmount.div(reserveBalance))
-  //     .pow(reserveWeight / MAX_WEIGHT)
-  //     .sub(ONE),
-  // )
+  return decimalToBN(purchaseAmount)
 }
 
 /**
@@ -253,7 +249,7 @@ function purchaseTargetAmount(
  * in vSignal, calculates the return in GRT. Only used for vSignal calculations.
  *
  * Formula:
- * Return = _reserveBalance * (1 - (1 - _sellAmount / _supply) ^ (1000000 / _reserveRatio))
+ * Return = reserveBalance * (1 - (1 - sellAmount / supply) ^ (1000000 / reserveRatio))
  *
  * @param supply              token vSignal supply
  * @param reserveBalance      total GRT reserve balance
@@ -266,9 +262,9 @@ function purchaseTargetAmount(
 function saleTargetAmount(
   supply: BigNumber,
   reserveBalance: BigNumber,
-  reserveRatio: number,
+  reserveRatio: BigNumber,
   sellAmount: BigNumber,
-) {
+): BigNumber {
   // special case for 0 sell amount
   if (sellAmount.eq(ZERO)) return ZERO
 
@@ -279,6 +275,19 @@ function saleTargetAmount(
   if (reserveRatio == MAX_WEIGHT)
     return reserveBalance.mul(sellAmount.mul(BN_E18)).div(supply).div(BN_E18)
 
-  // return reserveBalance * (1 - (1 - amount / supply) ^ (MAX_WEIGHT / reserveWeight))
-  return reserveBalance.mul(ONE.sub(ONE.sub(sellAmount.div(supply)).pow(MAX_WEIGHT / reserveRatio)))
+  // return reserveBalance * (1 - (1 - amount / supply) ^ (MAX_WEIGHT / reserveRatio))
+  const reserveBalanceD = new Decimal(reserveBalance.toString())
+  const amountD = new Decimal(sellAmount.toString())
+  const supplyD = new Decimal(supply.toString())
+  let exp: Decimal
+  MAX_WEIGHT.eq(reserveRatio.mul(BN_2)) // make it a bit more efficient for current network stats. But can handle a change in default reserve ratio
+    ? (exp = new Decimal(2))
+    : (exp = new Decimal(MAX_WEIGHT.toString()).div(new Decimal(reserveRatio.toString())))
+  const saleAmount = reserveBalanceD.mul(ONE_D.sub(ONE_D.sub(amountD.div(supplyD)).pow(exp)))
+
+  return decimalToBN(saleAmount)
+}
+
+function decimalToBN(dec: Decimal): BigNumber {
+  return BigNumber.from(dec.toString())
 }
