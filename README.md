@@ -1,3 +1,7 @@
+# DEPRECATED
+
+- I moved this into the common-ts library for the graph
+
 # Bonding curves for The Graph Curation
 
 Implements the Bancor Formula, and exposes it through the following functions:

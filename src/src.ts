@@ -1,12 +1,11 @@
 import Decimal from 'decimal.js'
 import { BigNumber } from 'ethers'
-import { bigNumberify } from './helpers'
 
-const ZERO = bigNumberify(0)
+const ZERO = BigNumber.from(0)
 const ONE_D = new Decimal(1)
-const MAX_WEIGHT = bigNumberify(1000000) // no BigNumber
-const PPM = bigNumberify(1000000)
-const BN_E18 = bigNumberify('1000000000000000000')
+const MAX_WEIGHT = BigNumber.from(1000000) // no BigNumber
+const PPM = BigNumber.from(1000000)
+const BN_E18 = BigNumber.from('1000000000000000000')
 const BN_2 = BigNumber.from(2)
 
 // Global contract value, non-upgradeable
